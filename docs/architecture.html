@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sample Registry Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
+<style>
+:root {
+  --ground: #f4f7f6;
+  --surface: #ffffff;
+  --ink: #15201d;
+  --muted: #56655f;
+  --rule: #d6e0dc;
+  --accent: #0b7a68;
+  --accent-soft: #e0f1ec;
+  --warn: #a8641a;
+  --code-bg: #eaf0ee;
+  --nt-a: #2e8b57; --nt-c: #2f6fb5; --nt-g: #b8860b; --nt-t: #c0392b; --nt-n: #6b7a75;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground: #0f1614; --surface: #16201d; --ink: #e3ece8; --muted: #93a49d;
+    --rule: #2a3935; --accent: #4cc7ae; --accent-soft: #173a33; --warn: #e0a256;
+    --code-bg: #1c2825;
+    --nt-a: #5fc98b; --nt-c: #6aa6ea; --nt-g: #e2b84a; --nt-t: #ef7a6c; --nt-n: #8b9a95;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #0f1614; --surface: #16201d; --ink: #e3ece8; --muted: #93a49d;
+  --rule: #2a3935; --accent: #4cc7ae; --accent-soft: #173a33; --warn: #e0a256;
+  --code-bg: #1c2825;
+  --nt-a: #5fc98b; --nt-c: #6aa6ea; --nt-g: #e2b84a; --nt-t: #ef7a6c; --nt-n: #8b9a95;
+}
+body {
+  background: var(--ground); color: var(--ink);
+  font: 16px/1.6 "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.wrap {
+  max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 80px;
+  display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 48px;
+}
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; font-size: 14px; }
+nav.toc .label { text-transform: uppercase; letter-spacing: .08em; font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+nav.toc a { color: var(--muted); text-decoration: none; display: block; padding: 2px 0 2px 10px; border-left: 2px solid var(--rule); }
+nav.toc a:hover, nav.toc a:focus-visible { color: var(--accent); border-left-color: var(--accent); outline: none; }
+main { min-width: 0; max-width: 780px; }
+header.hero { padding-bottom: 28px; border-bottom: 1px solid var(--rule); margin-bottom: 8px; }
+.eyebrow { font: 500 12px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .06em; color: var(--accent); text-transform: uppercase; }
+h1, h2, h3 { font-family: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif; text-wrap: balance; line-height: 1.15; }
+h1 { font-size: clamp(32px, 5vw, 46px); margin: 12px 0 14px; letter-spacing: -.01em; }
+h2 { font-size: 26px; margin: 56px 0 12px; }
+h3 { font-size: 18px; margin: 28px 0 8px; }
+p, li { max-width: 68ch; }
+.lede { font-size: 18px; color: var(--muted); margin: 0; }
+.seq { font-family: "IBM Plex Mono", ui-monospace, monospace; letter-spacing: .12em; font-weight: 500; }
+.nA { color: var(--nt-a); } .nC { color: var(--nt-c); } .nG { color: var(--nt-g); } .nT { color: var(--nt-t); } .nN { color: var(--nt-n); }
+.strip { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 14px; color: var(--muted); }
+.strip b { color: var(--ink); font-weight: 600; }
+code, pre { font-family: "IBM Plex Mono", ui-monospace, "Cascadia Code", monospace; font-size: .88em; }
+:not(pre) > code { background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+pre.code { background: var(--code-bg); padding: 14px 16px; border-radius: 6px; overflow-x: auto; line-height: 1.5; }
+.scroll { overflow-x: auto; margin: 14px 0; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+td:first-child { white-space: nowrap; }
+.figure { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 16px; margin: 16px 0; overflow-x: auto; }
+.figure .cap { font-size: 13px; color: var(--muted); margin-top: 8px; }
+pre.mermaid { margin: 0; background: transparent; display: flex; justify-content: center; }
+.rule-box { background: var(--accent-soft); border-radius: 8px; padding: 14px 18px; margin: 18px 0; }
+.rule-box strong { color: var(--accent); }
+ol.steps { padding-left: 22px; display: grid; gap: 8px; }
+.pill { display: inline-block; font: 500 12px/1.6 "IBM Plex Mono", monospace; padding: 0 7px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); }
+.pill.err { background: transparent; color: var(--warn); border: 1px solid currentColor; }
+.method { font: 600 12px "IBM Plex Mono", monospace; letter-spacing: .04em; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin: 16px 0; }
+.cols > div { border-top: 2px solid var(--accent); padding-top: 10px; }
+.cols h3 { margin-top: 0; }
+.cols p { margin: 0; font-size: 15px; }
+footer { margin-top: 64px; padding-top: 16px; border-top: 1px solid var(--rule); font-size: 13px; color: var(--muted); }
+a { color: var(--accent); }
+@media (max-width: 860px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); gap: 0; padding-inline: 16px; padding-block: 24px 56px; }
+  nav.toc { display: none; }
+}
+</style>
+</head>
+<body style="margin:0">
+
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <div class="label">Contents</div>
+  <ol>
+    <li><a href="#stack">Tech stack</a></li>
+    <li><a href="#layers">Layers</a></li>
+    <li><a href="#lifecycle">Request lifecycle</a></li>
+    <li><a href="#models">Data models</a></li>
+    <li><a href="#rest">REST design</a></li>
+    <li><a href="#testing">Testing</a></li>
+    <li><a href="#clients">Clients</a></li>
+    <li><a href="#tooling">Quality gate</a></li>
+    <li><a href="#next">Limits and next steps</a></li>
+    <li><a href="#run">Run it</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="hero">
+  <div class="eyebrow">Module 02 · REST API · FastAPI + Pydantic v2</div>
+  <h1>Lab Sample Registry API</h1>
+  <p class="lede">A small, production-style REST service that stores DNA samples and exposes CRUD over HTTP. Storage is in memory today; the next module swaps it for SQLAlchemy 2.0 + Postgres without touching a single endpoint.</p>
+  <div class="strip">
+    <span>Sample in: <span class="seq"><span class="nA">a</span><span class="nT">t</span><span class="nG">g</span><span class="nC">c</span><span class="nG">g</span><span class="nC">c</span></span></span>
+    <span>Stored as: <span class="seq"><span class="nA">A</span><span class="nT">T</span><span class="nG">G</span><span class="nC">C</span><span class="nG">G</span><span class="nC">C</span></span></span>
+    <span><b>length</b> 6</span>
+    <span><b>gc_content</b> 0.6667</span>
+  </div>
+</header>
+
+<section id="stack">
+<h2>Tech stack</h2>
+<div class="scroll"><table>
+<thead><tr><th>Concern</th><th>Tool</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td>Web framework</td><td>FastAPI</td><td>Type hints drive routing, validation and OpenAPI docs at <code>/docs</code></td></tr>
+<tr><td>Data contract</td><td>Pydantic v2</td><td>Validation, normalization, computed fields, JSON serialization</td></tr>
+<tr><td>ASGI server</td><td>Uvicorn</td><td>Runs the app: <code>uv run uvicorn app.main:app --reload</code></td></tr>
+<tr><td>HTTP client</td><td>httpx</td><td>Used by <code>client.py</code>, <code>fetch_uniprot.py</code> and <code>TestClient</code></td></tr>
+<tr><td>Tests</td><td>pytest</td><td>In-process tests, no running server needed</td></tr>
+<tr><td>Quality</td><td>ruff, mypy</td><td>Lint and format; strict static types with the pydantic plugin</td></tr>
+<tr><td>Packaging</td><td>uv</td><td><code>pyproject.toml</code> + <code>uv.lock</code>, one command setup</td></tr>
+</tbody></table></div>
+<p>Python 3.10+ is required, so the code avoids <code>datetime.UTC</code>, <code>enum.StrEnum</code> and <code>typing.Self</code>.</p>
+</section>
+
+<section id="layers">
+<h2>Layers</h2>
+<div class="figure">
+<pre class="mermaid">
+flowchart LR
+    C[HTTP client] -->|JSON| R["routers/samples.py&lt;br/&gt;thin controllers"]
+    R -->|validates with| S["schemas.py&lt;br/&gt;Pydantic DTOs"]
+    R -->|Depends| D["dependencies.py&lt;br/&gt;DI wiring"]
+    D --> P["repository.py&lt;br/&gt;SampleRepository Protocol"]
+    P --> M[(InMemorySampleRepository&lt;br/&gt;dict of Sample)]
+</pre>
+<div class="cap">Each layer talks only to its neighbour. Routers see a Protocol, never a concrete store.</div>
+</div>
+
+<div class="rule-box"><strong>The one rule:</strong> routers never import storage code; repositories never import FastAPI. Because routers depend on the <code>SampleRepository</code> Protocol, the storage engine is a detail that can change behind the interface.</div>
+
+<div class="scroll"><table>
+<thead><tr><th>File</th><th>Responsibility</th><th>Must not</th></tr></thead>
+<tbody>
+<tr><td><code>app/schemas.py</code></td><td>API contract: what clients may send and what they get back</td><td>know about storage or HTTP</td></tr>
+<tr><td><code>app/routers/samples.py</code></td><td>Map HTTP (paths, status codes, headers) to repository calls</td><td>import storage code</td></tr>
+<tr><td><code>app/dependencies.py</code></td><td>Build and hand out the repository; shared lookups such as 404</td><td>contain business rules</td></tr>
+<tr><td><code>app/repository.py</code></td><td>The only code that reads or writes storage</td><td>import FastAPI</td></tr>
+<tr><td><code>app/main.py</code></td><td>Assemble the app from routers</td><td>hold endpoint logic</td></tr>
+</tbody></table></div>
+
+<h3>Design patterns in the code</h3>
+<div class="scroll"><table>
+<thead><tr><th>Pattern</th><th>Where</th><th>What it buys</th></tr></thead>
+<tbody>
+<tr><td>Application Factory</td><td><code>create_app()</code> in <code>main.py</code></td><td>Tests build a fresh app per test</td></tr>
+<tr><td>DTO</td><td><code>SampleCreate</code>, <code>SampleUpdate</code>, <code>SampleRead</code></td><td>Clients cannot set server-owned fields</td></tr>
+<tr><td>Repository</td><td><code>SampleRepository</code> + <code>InMemorySampleRepository</code></td><td>Storage swap without router changes</td></tr>
+<tr><td>Dependency Injection</td><td><code>RepoDep</code>, <code>SampleDep</code> via <code>Depends</code></td><td>Routers receive what they need; tests override it</td></tr>
+<tr><td>Singleton</td><td><code>@lru_cache</code> on <code>get_repository()</code></td><td>One shared store per process</td></tr>
+<tr><td>Thin controller</td><td>each route is a few lines</td><td>HTTP concerns separate from data concerns</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="lifecycle">
+<h2>Request lifecycle</h2>
+<p>Follow one <span class="method">POST</span> <code>/samples</code> from wire to response.</p>
+<div class="figure">
+<pre class="mermaid">
+sequenceDiagram
+    participant Client
+    participant FastAPI
+    participant Router as create_sample
+    participant DI as get_repository
+    participant Repo as InMemorySampleRepository
+    Client->>FastAPI: POST /samples {name, organism, sequence}
+    FastAPI->>FastAPI: parse body into SampleCreate
+    alt invalid body
+        FastAPI-->>Client: 422 with error details
+    end
+    FastAPI->>DI: resolve RepoDep
+    DI-->>Router: repository (singleton)
+    Router->>Repo: add(payload)
+    alt name already used
+        Repo-->>Router: DuplicateNameError
+        Router-->>Client: 409 Conflict
+    end
+    Repo-->>Router: Sample (id, created_at set)
+    Router->>Router: SampleRead.model_validate(sample)
+    Router-->>Client: 201 Created, Location: /samples/{id}
+</pre>
+</div>
+<ol class="steps">
+  <li><strong>Validation happens before your code runs.</strong> If the body does not match <code>SampleCreate</code>, FastAPI returns 422 and the route function is never called.</li>
+  <li><strong>Dependencies are resolved per request.</strong> <code>RepoDep</code> calls <code>get_repository()</code>, which is cached, so every request sees the same store.</li>
+  <li><strong>Domain errors become HTTP errors in the router.</strong> The repository raises a plain <code>DuplicateNameError</code>; only the router knows that means 409.</li>
+  <li><strong>Output goes through a response model.</strong> <code>SampleRead.model_validate(sample)</code> reads the dataclass attributes (<code>from_attributes=True</code>) and adds computed fields.</li>
+</ol>
+<p>For routes with <code>{sample_id}</code>, the <code>SampleDep</code> dependency (<code>get_sample_or_404</code>) parses the UUID, loads the sample and raises 404 if it does not exist. The route body only ever sees a real <code>Sample</code>.</p>
+</section>
+
+<section id="models">
+<h2>Data models</h2>
+<p>There are two kinds of model, and keeping them apart is the main lesson of the module.</p>
+<div class="cols">
+  <div><h3>DTOs · Pydantic</h3><p><code>schemas.py</code>. The public contract over the wire: what may come in, what goes out.</p></div>
+  <div><h3>Domain object · dataclass</h3><p><code>repository.py</code>. What storage holds. Becomes a SQLAlchemy model in the next module.</p></div>
+</div>
+<div class="figure">
+<pre class="mermaid">
+classDiagram
+    class Organism {
+        &lt;&lt;enum&gt;&gt;
+        homo_sapiens
+        mus_musculus
+        escherichia_coli
+    }
+    class SampleBase {
+        name: str 1..100
+        organism: Organism
+        sequence: str 1..10000 ACGTN
+        validate_dna()
+    }
+    class SampleCreate
+    class SampleUpdate {
+        name: str or None
+        organism: Organism or None
+    }
+    class SampleRead {
+        id: UUID
+        created_at: datetime
+        length: int computed
+        gc_content: float computed
+    }
+    class SampleResource {
+        _links: dict of Link
+    }
+    class Link {
+        href: str
+        method: str = GET
+    }
+    class Page {
+        items: list of SampleRead
+        total: int
+        limit: int
+        offset: int
+    }
+    class Sample {
+        &lt;&lt;dataclass&gt;&gt;
+        name, organism, sequence
+        id: UUID = uuid4()
+        created_at: datetime = now UTC
+    }
+    SampleBase <|-- SampleCreate
+    SampleBase <|-- SampleRead
+    SampleRead <|-- SampleResource
+    SampleResource --> Link
+    Page --> SampleRead
+    SampleRead ..> Sample : model_validate
+</pre>
+</div>
+<div class="scroll"><table>
+<thead><tr><th>Model</th><th>Used for</th><th>Key points</th></tr></thead>
+<tbody>
+<tr><td><code>Organism</code></td><td>Allowed species</td><td><code>str</code> Enum, so JSON values are plain strings; anything else is 422</td></tr>
+<tr><td><code>SampleBase</code></td><td>Shared fields</td><td><code>validate_dna</code> runs before type checks: strips, uppercases, allows only <span class="seq"><span class="nA">A</span> <span class="nC">C</span> <span class="nG">G</span> <span class="nT">T</span> <span class="nN">N</span></span></td></tr>
+<tr><td><code>SampleCreate</code></td><td>POST body</td><td>No <code>id</code> or <code>created_at</code>: the server owns them</td></tr>
+<tr><td><code>SampleUpdate</code></td><td>PATCH body</td><td>Every field optional; <code>sequence</code> is deliberately not editable</td></tr>
+<tr><td><code>SampleRead</code></td><td>Responses</td><td>Adds <code>id</code>, <code>created_at</code>, computed <code>length</code> and <code>gc_content</code></td></tr>
+<tr><td><code>SampleResource</code></td><td>GET by id</td><td>Adds hypermedia links, serialized as <code>_links</code></td></tr>
+<tr><td><code>Page</code></td><td>GET collection</td><td>Envelope with <code>items</code>, <code>total</code>, <code>limit</code>, <code>offset</code></td></tr>
+<tr><td><code>Sample</code></td><td>Storage</td><td><code>slots=True</code> dataclass; default factories generate <code>id</code> and UTC <code>created_at</code></td></tr>
+</tbody></table></div>
+<p><strong>Why separate input and output models?</strong> If one model served both directions, a client could send its own <code>id</code> or <code>created_at</code>, and derived values like <code>gc_content</code> would have to be stored and kept in sync. Splitting them makes the contract explicit and safe.</p>
+<pre class="code">POST /samples
+{"name": "BRCA1-exon11", "organism": "homo_sapiens", "sequence": "atgcgc"}
+
+201 Created   Location: /samples/3f2a...
+{"name": "BRCA1-exon11", "organism": "homo_sapiens", "sequence": "ATGCGC",
+ "id": "3f2a...", "created_at": "2026-09-23T10:00:00Z",
+ "length": 6, "gc_content": 0.6667}</pre>
+</section>
+
+<section id="rest">
+<h2>REST API design</h2>
+<div class="scroll"><table>
+<thead><tr><th>Method</th><th>Path</th><th>Success</th><th>Errors</th></tr></thead>
+<tbody>
+<tr><td class="method">GET</td><td><code>/samples?organism=&amp;limit=&amp;offset=</code></td><td><span class="pill">200</span> Page</td><td><span class="pill err">422</span></td></tr>
+<tr><td class="method">POST</td><td><code>/samples</code></td><td><span class="pill">201</span> + Location</td><td><span class="pill err">409</span> <span class="pill err">422</span></td></tr>
+<tr><td class="method">GET</td><td><code>/samples/{id}</code></td><td><span class="pill">200</span> + _links</td><td><span class="pill err">404</span> <span class="pill err">422</span></td></tr>
+<tr><td class="method">PATCH</td><td><code>/samples/{id}</code></td><td><span class="pill">200</span></td><td><span class="pill err">404</span> <span class="pill err">422</span></td></tr>
+<tr><td class="method">DELETE</td><td><code>/samples/{id}</code></td><td><span class="pill">204</span> empty</td><td><span class="pill err">404</span></td></tr>
+<tr><td class="method">GET</td><td><code>/health</code></td><td><span class="pill">200</span> status ok</td><td></td></tr>
+</tbody></table></div>
+<ul>
+  <li><strong>Nouns in paths, verbs in methods.</strong> One resource (<code>/samples</code>), one router.</li>
+  <li><strong>Status codes carry meaning.</strong> 201 plus <code>Location</code> tells the client where the new resource lives; 204 means success with nothing to return; 409 means the request conflicts with current state (duplicate name); 422 means the input is malformed.</li>
+  <li><strong>Filtering and pagination via query parameters.</strong> <code>limit</code> is 1 to 100 (default 20), <code>offset</code> is 0 or more; <code>total</code> lets clients compute the number of pages.</li>
+  <li><strong>PATCH is a partial update.</strong> The repository applies only fields the client actually sent (<code>model_dump(exclude_unset=True)</code>), so omitted fields stay untouched.</li>
+  <li><strong>Richardson Maturity Level 3 (HATEOAS).</strong> <code>GET /samples/{id}</code> returns <code>_links</code> with <code>self</code>, <code>update</code>, <code>delete</code> and <code>collection</code>. Clients follow links instead of building URLs; <code>request.url_for</code> keeps them correct if prefixes change.</li>
+</ul>
+</section>
+
+<section id="testing">
+<h2>Testing</h2>
+<p><code>tests/test_samples.py</code> uses FastAPI <code>TestClient</code>, which calls the app in process: no server, no network.</p>
+<pre class="code">app = create_app()
+repo = InMemorySampleRepository()
+app.dependency_overrides[get_repository] = lambda: repo</pre>
+<p>This is where Dependency Injection pays off: each test gets a brand new, empty repository, so tests never share state. Coverage includes the happy path and every documented error: 201 + Location, 422 for bad sequence, organism and name, 409 on duplicates, the full CRUD lifecycle, filtering + pagination, 404 on unknown id, and following a hypermedia link.</p>
+<p>Conventions live in <code>tests/CLAUDE.md</code>. End-to-end tests with Robot Framework against a running server are planned in <code>e2e/</code>.</p>
+</section>
+
+<section id="clients">
+<h2>Clients</h2>
+<div class="cols">
+  <div><h3><code>client.py</code></h3><p>Consumes this API with httpx exactly as another service would: create, list, rename, trigger a validation error, delete. Start the server first.</p></div>
+  <div><h3><code>fetch_uniprot.py</code></h3><p>Consumes a real public bio API (UniProt) and maps its JSON to a small <code>TypedDict</code>. Shows timeouts and <code>raise_for_status()</code>.</p></div>
+</div>
+</section>
+
+<section id="tooling">
+<h2>Quality gate</h2>
+<p><code>uv run python scripts/check.py</code> runs these steps and stops at the first failure. The summary is short; full output goes to <code>.claude/logs/check.log</code>.</p>
+<ol class="steps">
+  <li><strong>dashes</strong>: no em or en dash characters in project text files (house style)</li>
+  <li><strong>pytest</strong></li>
+  <li><strong>ruff</strong> lint</li>
+  <li><strong>mypy</strong> strict on <code>app/</code></li>
+</ol>
+<p><code>.claude/settings.json</code> wires Claude Code hooks: <code>uv sync</code> on session start, a guard that forces <code>uv run</code> instead of bare pip or python, auto format + lint and a dash check after every edit, and a check run when a session stops.</p>
+</section>
+
+<section id="next">
+<h2>Limits and next steps</h2>
+<h3>In-memory store limitations</h3>
+<ul>
+  <li>Data is lost on restart and not shared between worker processes.</li>
+  <li>No locking, so concurrent writes are not safe.</li>
+  <li>The duplicate name check scans every item (O(n)); a database would use a unique index.</li>
+</ul>
+<h3>Exercises</h3>
+<ol class="steps">
+  <li>Add <code>GET /samples/{id}/reverse-complement</code>.</li>
+  <li>Implement <code>SampleRepository</code> with SQLAlchemy 2.0 + Postgres. Only <code>get_repository()</code> in <code>app/dependencies.py</code> should change; routers stay the same.</li>
+  <li>Add an <code>X-API-Key</code> header dependency that returns 401 when missing.</li>
+</ol>
+</section>
+
+<section id="run">
+<h2>Run it</h2>
+<pre class="code">uv sync                               # create .venv and install everything
+uv run uvicorn app.main:app --reload  # http://127.0.0.1:8000/docs
+uv run python client.py               # in a second terminal
+uv run pytest                         # tests, no server needed
+uv run python scripts/check.py        # tests + lint + types</pre>
+</section>
+
+<footer>Source of truth: <a href="../ARCHITECTURE.md">ARCHITECTURE.md</a>.</footer>
+</main>
+</div>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  mermaid.initialize({ startOnLoad: true, theme: dark ? "dark" : "default" });
+</script>
+</body>
+</html>

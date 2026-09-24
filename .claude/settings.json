@@ -1,0 +1,84 @@
+{
+  "env": {
+    "BASH_MAX_OUTPUT_LENGTH": "8000"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(uv sync:*)",
+      "Bash(uv run python scripts/check.py:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(uv run ruff:*)",
+      "Bash(uv run mypy:*)",
+      "Bash(uv run uvicorn:*)",
+      "Bash(uv run python client.py:*)",
+      "Bash(uv run python fetch_uniprot.py:*)",
+      "Bash(git diff:*)",
+      "Bash(git status:*)"
+    ],
+    "deny": [
+      "Read(./.venv/**)",
+      "Read(./.ruff_cache/**)",
+      "Read(./.mypy_cache/**)",
+      "Read(./**/__pycache__/**)",
+      "Read(./.pytest_cache/**)",
+      "Edit(./uv.lock)",
+      "Write(./uv.lock)",
+      "Edit(./.venv/**)",
+      "Write(./.venv/**)"
+    ],
+    "ask": ["Edit(./tests/**)", "Write(./tests/**)"]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && uv sync --quiet",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && uv run python .claude/hooks/uv_guard.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && uv run ruff format -q . && uv run ruff check --fix -q --output-format concise . 1>&2 || exit 2",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && uv run python .claude/hooks/dash_guard.py",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && uv run python .claude/hooks/stop_check.py",
+            "timeout": 180
+          }
+        ]
+      }
+    ]
+  }
+}
