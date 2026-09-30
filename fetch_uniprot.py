@@ -1,5 +1,4 @@
-"""Hands-on 1: consume a public bio REST API (needs internet).
-
+"""
 uv run python fetch_uniprot.py P38398
 """
 

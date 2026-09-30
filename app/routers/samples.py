@@ -20,13 +20,13 @@ router = APIRouter(prefix="/samples", tags=["samples"])
 
 
 @router.get("", response_model=Page)
-def list_samples(
+async def list_samples(
     repo: RepoDep,
     organism: Organism | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> Page:
-    items, total = repo.list(organism=organism, limit=limit, offset=offset)
+    items, total = await repo.list(organism=organism, limit=limit, offset=offset)
     return Page(
         items=[SampleRead.model_validate(s) for s in items],
         total=total,
@@ -36,9 +36,9 @@ def list_samples(
 
 
 @router.post("", response_model=SampleRead, status_code=status.HTTP_201_CREATED)
-def create_sample(payload: SampleCreate, repo: RepoDep, response: Response) -> SampleRead:
+async def create_sample(payload: SampleCreate, repo: RepoDep, response: Response) -> SampleRead:
     try:
-        sample = repo.add(payload)
+        sample = await repo.add(payload)
     except DuplicateNameError:
         raise HTTPException(status.HTTP_409_CONFLICT, detail="Sample name already exists") from None
     response.headers["Location"] = f"/samples/{sample.id}"
@@ -46,7 +46,7 @@ def create_sample(payload: SampleCreate, repo: RepoDep, response: Response) -> S
 
 
 @router.get("/{sample_id}", response_model=SampleResource)
-def get_sample(sample: SampleDep, request: Request) -> SampleResource:
+async def get_sample(sample: SampleDep, request: Request) -> SampleResource:
     """Richardson Level 3: the response tells the client what it can do next."""
     url = str(request.url_for("get_sample", sample_id=sample.id))
     links = {
@@ -59,10 +59,10 @@ def get_sample(sample: SampleDep, request: Request) -> SampleResource:
 
 
 @router.patch("/{sample_id}", response_model=SampleRead)
-def update_sample(payload: SampleUpdate, sample: SampleDep, repo: RepoDep) -> SampleRead:
-    return SampleRead.model_validate(repo.update(sample, payload))
+async def update_sample(payload: SampleUpdate, sample: SampleDep, repo: RepoDep) -> SampleRead:
+    return SampleRead.model_validate(await repo.update(sample, payload))
 
 
 @router.delete("/{sample_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_sample(sample: SampleDep, repo: RepoDep) -> None:
-    repo.delete(sample)
+async def delete_sample(sample: SampleDep, repo: RepoDep) -> None:
+    await repo.delete(sample)

@@ -1,10 +1,13 @@
 # Lab Sample Registry API
-FastAPI + Pydantic v2 teaching demo; in-memory repo now, SQLAlchemy 2.0 + Postgres next.
+FastAPI + Pydantic v2 teaching demo; async SQLAlchemy 2.0 + Postgres storage, Alembic migrations.
 Python 3.10+: no `datetime.UTC`, `enum.StrEnum`, `typing.Self`.
 
 ## Layers (never cross)
-`schemas.py` DTOs → `routers/` thin HTTP → `dependencies.py` DI → `repository.py` sole storage access.
-Routers never import storage code; repositories never import FastAPI.
+`schemas.py` DTOs → `routers/` thin async HTTP → `dependencies.py` DI → `repository.py` sole storage access.
+Routers never import storage code; repositories never import FastAPI. `models.py` holds SQLAlchemy
+table metadata only (no Session usage), same role for storage that `schemas.py` plays for HTTP.
+Postgres for dev/test runs via `docker-compose.yml` (`db` + `test_db`); tests roll back a SAVEPOINT
+per test (see `tests/conftest.py`), never committing real rows.
 
 ## Rules
 - Full type hints, `X | None`, Pydantic v2 API only. No `print`, no broad `except`.

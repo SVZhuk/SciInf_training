@@ -6,6 +6,7 @@ open http://127.0.0.1:8000/docs
 
 from fastapi import FastAPI
 
+from app.db import lifespan
 from app.routers import samples
 
 
@@ -14,6 +15,7 @@ def create_app() -> FastAPI:
         title="Lab Sample Registry API",
         version="1.0.0",
         description="Teaching demo: REST CRUD over DNA samples.",
+        lifespan=lifespan,
     )
     app.include_router(samples.router)
 

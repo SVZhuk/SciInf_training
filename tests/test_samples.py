@@ -1,25 +1,25 @@
-"""API tests: pytest + FastAPI TestClient (no running server needed).
+"""API tests: pytest + httpx AsyncClient (no running server needed).
 
-Each test gets a fresh repository via `dependency_overrides` -> full isolation.
+Each test gets a fresh Postgres transaction via `sample_repository` (see conftest.py),
+overridden into `app.dependency_overrides[get_repository]` -> full isolation, nothing committed.
 """
 
-from collections.abc import Iterator
+from collections.abc import AsyncIterator
 from typing import Any
 
 import pytest
-from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 
 from app.dependencies import get_repository
 from app.main import create_app
-from app.repository import InMemorySampleRepository
+from app.repository import SqlAlchemySampleRepository
 
 
 @pytest.fixture
-def client() -> Iterator[TestClient]:
+async def client(sample_repository: SqlAlchemySampleRepository) -> AsyncIterator[AsyncClient]:
     app = create_app()
-    repo = InMemorySampleRepository()
-    app.dependency_overrides[get_repository] = lambda: repo
-    with TestClient(app) as c:
+    app.dependency_overrides[get_repository] = lambda: sample_repository
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
 
 
@@ -28,8 +28,10 @@ def payload() -> dict[str, Any]:
     return {"name": "BRCA1-exon11", "organism": "homo_sapiens", "sequence": "atgcgc"}
 
 
-def test_create_returns_201_and_location(client: TestClient, payload: dict[str, Any]) -> None:
-    r = client.post("/samples", json=payload)
+async def test_create_returns_201_and_location(
+    client: AsyncClient, payload: dict[str, Any]
+) -> None:
+    r = await client.post("/samples", json=payload)
     assert r.status_code == 201
     body = r.json()
     assert r.headers["Location"] == f"/samples/{body['id']}"
@@ -41,52 +43,53 @@ def test_create_returns_201_and_location(client: TestClient, payload: dict[str, 
     ("field", "value"),
     [("sequence", "ATGXZ"), ("organism", "alien"), ("name", "")],
 )
-def test_invalid_payload_returns_422(
-    client: TestClient, payload: dict[str, Any], field: str, value: str
+async def test_invalid_payload_returns_422(
+    client: AsyncClient, payload: dict[str, Any], field: str, value: str
 ) -> None:
-    r = client.post("/samples", json={**payload, field: value})
+    r = await client.post("/samples", json={**payload, field: value})
     assert r.status_code == 422
 
 
-def test_duplicate_name_returns_409(client: TestClient, payload: dict[str, Any]) -> None:
-    client.post("/samples", json=payload)
-    assert client.post("/samples", json=payload).status_code == 409
+async def test_duplicate_name_returns_409(client: AsyncClient, payload: dict[str, Any]) -> None:
+    await client.post("/samples", json=payload)
+    assert (await client.post("/samples", json=payload)).status_code == 409
 
 
-def test_full_crud_lifecycle(client: TestClient, payload: dict[str, Any]) -> None:
-    sample_id = client.post("/samples", json=payload).json()["id"]
+async def test_full_crud_lifecycle(client: AsyncClient, payload: dict[str, Any]) -> None:
+    sample_id = (await client.post("/samples", json=payload)).json()["id"]
 
-    assert client.get(f"/samples/{sample_id}").status_code == 200
+    assert (await client.get(f"/samples/{sample_id}")).status_code == 200
 
-    r = client.patch(f"/samples/{sample_id}", json={"name": "renamed"})
+    r = await client.patch(f"/samples/{sample_id}", json={"name": "renamed"})
     assert r.status_code == 200
     assert r.json()["name"] == "renamed"
 
-    assert client.delete(f"/samples/{sample_id}").status_code == 204
-    assert client.get(f"/samples/{sample_id}").status_code == 404
+    assert (await client.delete(f"/samples/{sample_id}")).status_code == 204
+    assert (await client.get(f"/samples/{sample_id}")).status_code == 404
 
 
-def test_list_filter_and_pagination(client: TestClient) -> None:
+async def test_list_filter_and_pagination(client: AsyncClient) -> None:
     for i, org in enumerate(["homo_sapiens", "mus_musculus", "homo_sapiens"]):
-        client.post("/samples", json={"name": f"s{i}", "organism": org, "sequence": "ACGT"})
+        await client.post("/samples", json={"name": f"s{i}", "organism": org, "sequence": "ACGT"})
 
-    r = client.get("/samples", params={"organism": "homo_sapiens", "limit": 1})
+    r = await client.get("/samples", params={"organism": "homo_sapiens", "limit": 1})
     body = r.json()
     assert r.status_code == 200
     assert body["total"] == 2
     assert len(body["items"]) == 1
 
 
-def test_unknown_id_returns_404(client: TestClient) -> None:
-    r = client.get("/samples/00000000-0000-0000-0000-000000000000")
+async def test_unknown_id_returns_404(client: AsyncClient) -> None:
+    r = await client.get("/samples/00000000-0000-0000-0000-000000000000")
     assert r.status_code == 404
 
 
-def test_get_returns_hypermedia_links(client: TestClient, payload: dict[str, Any]) -> None:
-    sample_id = client.post("/samples", json=payload).json()["id"]
-    links = client.get(f"/samples/{sample_id}").json()["_links"]
+async def test_get_returns_hypermedia_links(client: AsyncClient, payload: dict[str, Any]) -> None:
+    sample_id = (await client.post("/samples", json=payload)).json()["id"]
+    links = (await client.get(f"/samples/{sample_id}")).json()["_links"]
 
     assert links["self"]["href"].endswith(f"/samples/{sample_id}")
     assert links["delete"]["method"] == "DELETE"
     # a client follows the link instead of building the URL itself
-    assert client.request(links["delete"]["method"], links["delete"]["href"]).status_code == 204
+    r = await client.request(links["delete"]["method"], links["delete"]["href"])
+    assert r.status_code == 204
