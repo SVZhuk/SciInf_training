@@ -12,6 +12,9 @@
       "Bash(uv run uvicorn:*)",
       "Bash(uv run python client.py:*)",
       "Bash(uv run python fetch_uniprot.py:*)",
+      "Bash(docker compose:*)",
+      "Bash(uv run alembic:*)",
+      "Bash(uv run pyright:*)",
       "Bash(git diff:*)",
       "Bash(git status:*)"
     ],
@@ -60,6 +63,11 @@
             "type": "command",
             "command": "cd \"$CLAUDE_PROJECT_DIR\" && uv run ruff format -q . && uv run ruff check --fix -q --output-format concise . 1>&2 || exit 2",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && uv run pyright app 1>&2 || exit 2",
+            "timeout": 60
           },
           {
             "type": "command",

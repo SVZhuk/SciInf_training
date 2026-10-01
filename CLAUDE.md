@@ -16,5 +16,5 @@ per test (see `tests/conftest.py`), never committing real rows.
 - No double-backtick notation in comments or code. Minimal comments.
 - No em dash (U+2014) or en dash (U+2013) in code, comments, docstrings or docs; `/check` fails on them.
 - Dependency management: `uv` (`pyproject.toml` + `uv.lock`). Always invoke python/pytest/ruff/mypy via `uv run`; never bare `pip` or `python -m venv`.
-- Formatting/lint autofix runs via hook; don't restate style rules or reformat manually.
-- Done = `/check` passes. Many failures → `test-fixer` agent. Be brief; show diffs, not whole files.
+- Formatting/lint autofix and a `pyright` type-check (`app/` only, standard mode) run via hook after every edit; don't restate style rules or reformat manually.
+- Done = `/check` passes (`mypy --strict` gates it; `pyright` is edit-time only, not part of `/check`). Many failures → `test-fixer` agent. Be brief; show diffs, not whole files.

@@ -58,7 +58,7 @@ storage engine is a detail that can change behind the interface.
 | DTO | `SampleCreate`, `SampleUpdate`, `SampleRead` | Clients cannot set server-owned fields |
 | Repository | `SampleRepository` + `InMemorySampleRepository` + `SqlAlchemySampleRepository` | Storage swap without router changes |
 | Dependency Injection | `RepoDep`, `SampleDep`, `SessionDep` via `Depends` | Routers receive what they need; tests override it |
-| Unit of work | `get_db_session` (per-request `AsyncSession`, commit/rollback in `finally`) | One transaction per request, not a shared singleton |
+| Unit of work | `get_db_session` (per-request `AsyncSession`; commits on success, rolls back on exception, always closed in `finally`) | One transaction per request, not a shared singleton |
 | Thin controller | each route is a few lines, `async def` | HTTP concerns separate from data concerns |
 
 ## 3. Request lifecycle
@@ -98,9 +98,10 @@ Steps worth noticing:
 1. **Validation happens before your code runs.** If the body does not match `SampleCreate`,
    FastAPI returns 422 and the route function is never called.
 2. **The session is scoped to one request.** `SessionDep` (`get_db_session`) opens an
-   `AsyncSession` per request and commits it in a `finally` block once the handler returns;
-   `get_repository()` builds a fresh `SqlAlchemySampleRepository` around that session, so there
-   is no shared, process-wide store.
+   `AsyncSession` per request, commits it once the handler returns without error, rolls it back
+   if the handler raised, and always closes it in a `finally` block; `get_repository()` builds a
+   fresh `SqlAlchemySampleRepository` around that session, so there is no shared, process-wide
+   store.
 3. **Domain errors become HTTP errors in the router.** The repository catches Postgres's
    `IntegrityError` on the unique `name` constraint and raises a plain `DuplicateNameError`;
    only the router knows that this means 409.

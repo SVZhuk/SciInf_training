@@ -96,10 +96,10 @@ class SqlAlchemySampleRepository:
 
         rows_stmt = stmt.order_by(SampleModel.created_at).limit(limit).offset(offset)
         result = await self._session.execute(rows_stmt)
-        return list(result.scalars().all()), total or 0
+        return list(result.scalars().all()), total or 0  # pyright: ignore[reportReturnType]
 
     async def get(self, sample_id: UUID) -> Sample | None:
-        return await self._session.get(SampleModel, sample_id)
+        return await self._session.get(SampleModel, sample_id)  # pyright: ignore[reportReturnType]
 
     async def add(self, data: SampleCreate) -> Sample:
         model = SampleModel(**data.model_dump())
@@ -109,7 +109,7 @@ class SqlAlchemySampleRepository:
         except IntegrityError as exc:
             await self._session.rollback()
             raise DuplicateNameError(data.name) from exc
-        return model
+        return model  # pyright: ignore[reportReturnType]
 
     async def update(self, sample: Sample, data: SampleUpdate) -> Sample:
         for key, value in data.model_dump(exclude_unset=True).items():
@@ -118,3 +118,4 @@ class SqlAlchemySampleRepository:
 
     async def delete(self, sample: Sample) -> None:
         await self._session.delete(sample)
+        await self._session.flush()
