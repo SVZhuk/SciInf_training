@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Lab Sample Registry - Samples{% endblock %}
+
+{% block content %}
+  <div class="layout">
+    <aside class="sidebar">
+      <button type="button" id="btn-add" class="btn">Add Sample</button>
+      <button type="button" id="btn-edit" class="btn" disabled>Edit Sample</button>
+      <button type="button" id="btn-delete" class="btn btn-danger" disabled>Delete Sample</button>
+    </aside>
+    <div class="main-content">
+      <div id="form-panel" class="form-panel" hidden>
+        <h2 id="form-title">Add Sample</h2>
+        <form id="sample-form">
+          <label for="field-name">Name</label>
+          <input id="field-name" name="name" type="text" maxlength="100" required>
+
+          <label for="field-organism">Organism</label>
+          <select id="field-organism" name="organism" required>
+            {% for o in organisms %}
+            <option value="{{ o.value }}">{{ o.value }}</option>
+            {% endfor %}
+          </select>
+
+          <div id="field-sequence-wrapper">
+            <label for="field-sequence">Sequence</label>
+            <textarea id="field-sequence" name="sequence" maxlength="10000"></textarea>
+          </div>
+
+          <p id="form-error" class="error" hidden></p>
+
+          <div class="form-actions">
+            <button type="submit" id="form-submit" class="btn">Save</button>
+            <button type="button" id="form-cancel" class="btn btn-secondary">Cancel</button>
+          </div>
+        </form>
+      </div>
+
+      <div id="table-container">
+        <p class="subtitle">{{ total }} sample{{ "s" if total != 1 else "" }}</p>
+
+        {% if not samples %}
+          <p class="empty">No samples yet.</p>
+        {% else %}
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Organism</th>
+                <th>Length</th>
+                <th>GC Content</th>
+                <th>Created At</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in samples %}
+              <tr data-id="{{ s.id }}">
+                <td>{{ s.name }}</td>
+                <td>{{ s.organism.value }}</td>
+                <td>{{ s.length }}</td>
+                <td>{{ "%.1f"|format(s.gc_content * 100) }}%</td>
+                <td>{{ s.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endblock %}

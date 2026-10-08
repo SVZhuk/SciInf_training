@@ -36,12 +36,14 @@ async def list_samples(
 
 
 @router.post("", response_model=SampleRead, status_code=status.HTTP_201_CREATED)
-async def create_sample(payload: SampleCreate, repo: RepoDep, response: Response) -> SampleRead:
+async def create_sample(
+    payload: SampleCreate, repo: RepoDep, response: Response, request: Request
+) -> SampleRead:
     try:
         sample = await repo.add(payload)
     except DuplicateNameError:
         raise HTTPException(status.HTTP_409_CONFLICT, detail="Sample name already exists") from None
-    response.headers["Location"] = f"/samples/{sample.id}"
+    response.headers["Location"] = str(request.url_for("get_sample", sample_id=sample.id))
     return SampleRead.model_validate(sample)
 
 

@@ -19,8 +19,8 @@ HTTPie is a tool, not a project dependency, so it is not in `pyproject.toml`.
 
 | You type | Meaning |
 |---|---|
-| `http :8000/samples` | `GET http://localhost:8000/samples` (`:port` is localhost shorthand) |
-| `http POST :8000/samples ...` | Method goes before the URL; GET is the default, POST if you send data |
+| `http :8000/api/v1/samples` | `GET http://localhost:8000/api/v1/samples` (`:port` is localhost shorthand) |
+| `http POST :8000/api/v1/samples ...` | Method goes before the URL; GET is the default, POST if you send data |
 | `name=TP53` | JSON body field, string: `{"name": "TP53"}` |
 | `count:=5`, `tags:='["a"]'` | JSON body field, raw JSON (numbers, booleans, lists) |
 | `organism==homo_sapiens` | Query parameter: `?organism=homo_sapiens` |
@@ -48,17 +48,17 @@ http :8000/health
 ### Create: POST, 201 + Location
 
 ```bash
-http -v POST :8000/samples name=TP53-exon5 organism=homo_sapiens sequence=taccTGCCGG
+http -v POST :8000/api/v1/samples name=TP53-exon5 organism=homo_sapiens sequence=taccTGCCGG
 ```
 
 ```
-POST /samples HTTP/1.1
+POST /api/v1/samples HTTP/1.1
 Content-Type: application/json
 ...
 {"name": "TP53-exon5", "organism": "homo_sapiens", "sequence": "taccTGCCGG"}
 
 HTTP/1.1 201 Created
-location: /samples/5f083a2f-4166-4f14-8435-caaf159fd12d
+location: /api/v1/samples/5f083a2f-4166-4f14-8435-caaf159fd12d
 ...
 {
     "name": "TP53-exon5",
@@ -84,12 +84,12 @@ Copy it from the `location` header, or capture it:
 
 ```bash
 # bash (needs jq)
-ID=$(http -b POST :8000/samples name=BRCA1-exon11 organism=homo_sapiens sequence=ATGCGC | jq -r .id)
+ID=$(http -b POST :8000/api/v1/samples name=BRCA1-exon11 organism=homo_sapiens sequence=ATGCGC | jq -r .id)
 ```
 
 ```powershell
 # PowerShell
-$ID = (http -b POST :8000/samples name=BRCA1-exon11 organism=homo_sapiens sequence=ATGCGC | ConvertFrom-Json).id
+$ID = (http -b POST :8000/api/v1/samples name=BRCA1-exon11 organism=homo_sapiens sequence=ATGCGC | ConvertFrom-Json).id
 ```
 
 Use `$ID` in the commands below (same syntax in both shells).
@@ -97,7 +97,7 @@ Use `$ID` in the commands below (same syntax in both shells).
 ### List: filter and paginate with query parameters
 
 ```bash
-http :8000/samples organism==homo_sapiens limit==1 offset==0
+http :8000/api/v1/samples organism==homo_sapiens limit==1 offset==0
 ```
 ```json
 {"items": [{"name": "TP53-exon5", "...": "..."}], "total": 2, "limit": 1, "offset": 0}
@@ -108,17 +108,17 @@ http :8000/samples organism==homo_sapiens limit==1 offset==0
 ### Read one: hypermedia links
 
 ```bash
-http :8000/samples/$ID
+http :8000/api/v1/samples/$ID
 ```
 ```json
 {
     "name": "BRCA1-exon11",
     "...": "...",
     "_links": {
-        "self":       {"href": "http://localhost:8000/samples/<id>", "method": "GET"},
-        "update":     {"href": "http://localhost:8000/samples/<id>", "method": "PATCH"},
-        "delete":     {"href": "http://localhost:8000/samples/<id>", "method": "DELETE"},
-        "collection": {"href": "http://localhost:8000/samples", "method": "GET"}
+        "self":       {"href": "http://localhost:8000/api/v1/samples/<id>", "method": "GET"},
+        "update":     {"href": "http://localhost:8000/api/v1/samples/<id>", "method": "PATCH"},
+        "delete":     {"href": "http://localhost:8000/api/v1/samples/<id>", "method": "DELETE"},
+        "collection": {"href": "http://localhost:8000/api/v1/samples", "method": "GET"}
     }
 }
 ```
@@ -129,7 +129,7 @@ instead of building the URL itself: `http DELETE <href from _links.delete>`.
 ### Partial update: PATCH
 
 ```bash
-http PATCH :8000/samples/$ID name=BRCA1-exon11-v2
+http PATCH :8000/api/v1/samples/$ID name=BRCA1-exon11-v2
 ```
 
 Only `name` changes; everything else stays as it was.
@@ -137,7 +137,7 @@ Only `name` changes; everything else stays as it was.
 ### Delete: 204, no body
 
 ```bash
-http DELETE :8000/samples/$ID
+http DELETE :8000/api/v1/samples/$ID
 ```
 ```
 HTTP/1.1 204 No Content
@@ -147,12 +147,12 @@ HTTP/1.1 204 No Content
 
 | Command | Status | Why |
 |---|---|---|
-| `http POST :8000/samples name=bad organism=homo_sapiens sequence=ATGXYZ` | 422 | Not a DNA alphabet |
-| `http POST :8000/samples name=bad organism=alien sequence=ACGT` | 422 | Not an allowed organism |
-| `http :8000/samples limit==500` | 422 | `limit` is capped at 100 |
-| `http :8000/samples/not-a-uuid` | 422 | Path id must be a UUID |
+| `http POST :8000/api/v1/samples name=bad organism=homo_sapiens sequence=ATGXYZ` | 422 | Not a DNA alphabet |
+| `http POST :8000/api/v1/samples name=bad organism=alien sequence=ACGT` | 422 | Not an allowed organism |
+| `http :8000/api/v1/samples limit==500` | 422 | `limit` is capped at 100 |
+| `http :8000/api/v1/samples/not-a-uuid` | 422 | Path id must be a UUID |
 | Run the same POST twice with the same `name` | 409 | Duplicate name |
-| `http :8000/samples/00000000-0000-0000-0000-000000000000` | 404 | No such sample |
+| `http :8000/api/v1/samples/00000000-0000-0000-0000-000000000000` | 404 | No such sample |
 
 Validation errors (422) say exactly which field failed and why:
 
@@ -174,32 +174,32 @@ Business errors are simpler: `{"detail": "Sample name already exists"}` (409),
 **Preview a request without sending it**, handy while learning the syntax:
 
 ```bash
-http --offline POST :8000/samples name=x organism=mus_musculus sequence=ACGT
+http --offline POST :8000/api/v1/samples name=x organism=mus_musculus sequence=ACGT
 ```
 
 **Fail a script on an error status**: HTTPie exits 0 even on 404 unless you ask:
 
 ```bash
-http --check-status :8000/samples/00000000-0000-0000-0000-000000000000
+http --check-status :8000/api/v1/samples/00000000-0000-0000-0000-000000000000
 echo $?   # 4 (4xx); in PowerShell: $LASTEXITCODE
 ```
 
 **Send a JSON file** when the body is large:
 
 ```bash
-http POST :8000/samples < sample.json
+http POST :8000/api/v1/samples < sample.json
 ```
 
 ```powershell
-Get-Content -Raw sample.json | http POST :8000/samples
+Get-Content -Raw sample.json | http POST :8000/api/v1/samples
 ```
 
 **Sessions** remember headers and cookies between calls. Useful once the API needs a key
 (README exercise 3):
 
 ```bash
-http --session=demo :8000/samples X-API-Key:secret   # stored
-http --session=demo :8000/samples                     # sent again automatically
+http --session=demo :8000/api/v1/samples X-API-Key:secret   # stored
+http --session=demo :8000/api/v1/samples                     # sent again automatically
 ```
 
 **PowerShell quoting**: raw JSON with inner quotes (`tags:='["a"]'`) can lose its quotes in

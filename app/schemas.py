@@ -38,11 +38,11 @@ class SampleBase(BaseModel):
 
 
 class SampleCreate(SampleBase):
-    """Request body for POST /samples."""
+    """Request body for POST /api/v1/samples."""
 
 
 class SampleUpdate(BaseModel):
-    """Request body for PATCH /samples/{id}; every field optional."""
+    """Request body for PATCH /api/v1/samples/{id}; every field optional."""
 
     name: Annotated[str | None, Field(min_length=1, max_length=100)] = None
     organism: Organism | None = None

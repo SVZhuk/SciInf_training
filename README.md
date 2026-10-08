@@ -7,15 +7,25 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for how it works.
 
 ```bash
 cp .env.example .env                  # DATABASE_URL / TEST_DATABASE_URL
-docker compose up -d db test_db       # dev + test Postgres
+docker compose up -d db               # dev Postgres (test_db starts itself for pytest)
 uv sync                               # creates .venv, installs app + ruff + mypy + pytest
 uv run alembic upgrade head           # create the schema
 uv run uvicorn app.main:app --reload  # http://127.0.0.1:8000/docs
 uv run python client.py               # in a 2nd terminal
-uv run pytest                         # runs against test_db (Postgres), rolled back per test
+uv run pytest                         # auto-starts test_db, rolled back per test
 uv run python scripts/check.py        # tests + lint + types, compact output
 uv tool install httpie                # CLI testing, see docs/httpie.md
 ```
+
+### Windows
+
+The commands above are bash (WSL, Git Bash, macOS/Linux). Two ways to run on Windows:
+
+- **WSL (recommended)**: open a WSL terminal in the project directory and run the commands above
+  unchanged. Docker Desktop must have WSL2 integration enabled for `docker compose` to reach it.
+- **Native PowerShell**: same commands, except copy the env file with
+  `Copy-Item .env.example .env` instead of `cp`. `uv`, `docker compose`, `uv run ...` work the
+  same in PowerShell as in bash.
 
 ## Local database access
 
@@ -53,11 +63,13 @@ restarting the container.
 
 | Method | Path | Success | Errors |
 |---|---|---|---|
-| GET | /samples?organism=&limit=&offset= | 200 | 422 |
-| POST | /samples | 201 + Location | 409, 422 |
-| GET | /samples/{id} | 200 + `_links` (Richardson L3) | 404, 422 |
-| PATCH | /samples/{id} | 200 | 404, 422 |
-| DELETE | /samples/{id} | 204 | 404 |
+| GET | /api/v1/samples?organism=&limit=&offset= | 200 | 422 |
+| POST | /api/v1/samples | 201 + Location | 409, 422 |
+| GET | /api/v1/samples/{id} | 200 + `_links` (Richardson L3) | 404, 422 |
+| PATCH | /api/v1/samples/{id} | 200 | 404, 422 |
+| DELETE | /api/v1/samples/{id} | 204 | 404 |
+| GET | / | 200, HTML page: samples table + Add/Edit/Delete sidebar | - |
+| GET | /health | 200 | - |
 
 ## Layout & patterns
 
@@ -71,6 +83,11 @@ app/
   repository.py     # Repository pattern (Protocol + in-memory + SQLAlchemy impls)
   dependencies.py   # Dependency Injection via Depends
   routers/samples.py# thin async controllers, one router per resource
+  api/router.py     # /api/v1 aggregator: mounts resource routers under the version prefix
+  frontend/         # HTML frontend: router + templates + static, separate from the JSON API
+                     # so it can be swapped for a SPA later without touching anything above.
+                     # static/js/app.js adds/edits/deletes samples by calling the same /api/v1
+                     # endpoints from the browser, then re-renders the table.
 alembic/            # schema migrations (async env.py, autogenerate from Base.metadata)
 tests/              # pytest-asyncio + httpx AsyncClient + dependency_overrides
 docker-compose.yml  # dev (db) + test (test_db) Postgres instances
@@ -79,5 +96,5 @@ client.py           # httpx consumer
 
 ## Exercises
 
-1. Add `GET /samples/{id}/reverse-complement`.
+1. Add `GET /api/v1/samples/{id}/reverse-complement`.
 2. Add an `X-API-Key` header dependency; return 401 when missing.

@@ -19,26 +19,26 @@ def main() -> None:
             "organism": "homo_sapiens",
             "sequence": "TACCTGCCGGAGCAGG",
         }
-        r = client.post("/samples", json=new)
+        r = client.post("/api/v1/samples", json=new)
         print(r.status_code, r.headers.get("Location"))
         r.raise_for_status()
         sample = r.json()
         print(f"GC content: {sample['gc_content']:.1%}")
 
         # READ (collection with filter)
-        r = client.get("/samples", params={"organism": "homo_sapiens"})
+        r = client.get("/api/v1/samples", params={"organism": "homo_sapiens"})
         print("total human samples:", r.json()["total"])
 
         # UPDATE (partial)
-        r = client.patch(f"/samples/{sample['id']}", json={"name": "TP53-exon5-v2"})
+        r = client.patch(f"/api/v1/samples/{sample['id']}", json={"name": "TP53-exon5-v2"})
         print("renamed ->", r.json()["name"])
 
         # Validation error example
-        r = client.post("/samples", json={**new, "name": "bad", "sequence": "ATGXYZ"})
+        r = client.post("/api/v1/samples", json={**new, "name": "bad", "sequence": "ATGXYZ"})
         print(r.status_code, r.json()["detail"][0]["msg"])
 
         # DELETE
-        r = client.delete(f"/samples/{sample['id']}")
+        r = client.delete(f"/api/v1/samples/{sample['id']}")
         print("deleted:", r.status_code)
 
 

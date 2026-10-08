@@ -31,10 +31,10 @@ def payload() -> dict[str, Any]:
 async def test_create_returns_201_and_location(
     client: AsyncClient, payload: dict[str, Any]
 ) -> None:
-    r = await client.post("/samples", json=payload)
+    r = await client.post("/api/v1/samples", json=payload)
     assert r.status_code == 201
     body = r.json()
-    assert r.headers["Location"] == f"/samples/{body['id']}"
+    assert r.headers["Location"].endswith(f"/api/v1/samples/{body['id']}")
     assert body["sequence"] == "ATGCGC"  # normalized by validator
     assert body["gc_content"] == pytest.approx(0.6667)
 
@@ -46,33 +46,35 @@ async def test_create_returns_201_and_location(
 async def test_invalid_payload_returns_422(
     client: AsyncClient, payload: dict[str, Any], field: str, value: str
 ) -> None:
-    r = await client.post("/samples", json={**payload, field: value})
+    r = await client.post("/api/v1/samples", json={**payload, field: value})
     assert r.status_code == 422
 
 
 async def test_duplicate_name_returns_409(client: AsyncClient, payload: dict[str, Any]) -> None:
-    await client.post("/samples", json=payload)
-    assert (await client.post("/samples", json=payload)).status_code == 409
+    await client.post("/api/v1/samples", json=payload)
+    assert (await client.post("/api/v1/samples", json=payload)).status_code == 409
 
 
 async def test_full_crud_lifecycle(client: AsyncClient, payload: dict[str, Any]) -> None:
-    sample_id = (await client.post("/samples", json=payload)).json()["id"]
+    sample_id = (await client.post("/api/v1/samples", json=payload)).json()["id"]
 
-    assert (await client.get(f"/samples/{sample_id}")).status_code == 200
+    assert (await client.get(f"/api/v1/samples/{sample_id}")).status_code == 200
 
-    r = await client.patch(f"/samples/{sample_id}", json={"name": "renamed"})
+    r = await client.patch(f"/api/v1/samples/{sample_id}", json={"name": "renamed"})
     assert r.status_code == 200
     assert r.json()["name"] == "renamed"
 
-    assert (await client.delete(f"/samples/{sample_id}")).status_code == 204
-    assert (await client.get(f"/samples/{sample_id}")).status_code == 404
+    assert (await client.delete(f"/api/v1/samples/{sample_id}")).status_code == 204
+    assert (await client.get(f"/api/v1/samples/{sample_id}")).status_code == 404
 
 
 async def test_list_filter_and_pagination(client: AsyncClient) -> None:
     for i, org in enumerate(["homo_sapiens", "mus_musculus", "homo_sapiens"]):
-        await client.post("/samples", json={"name": f"s{i}", "organism": org, "sequence": "ACGT"})
+        await client.post(
+            "/api/v1/samples", json={"name": f"s{i}", "organism": org, "sequence": "ACGT"}
+        )
 
-    r = await client.get("/samples", params={"organism": "homo_sapiens", "limit": 1})
+    r = await client.get("/api/v1/samples", params={"organism": "homo_sapiens", "limit": 1})
     body = r.json()
     assert r.status_code == 200
     assert body["total"] == 2
@@ -80,15 +82,15 @@ async def test_list_filter_and_pagination(client: AsyncClient) -> None:
 
 
 async def test_unknown_id_returns_404(client: AsyncClient) -> None:
-    r = await client.get("/samples/00000000-0000-0000-0000-000000000000")
+    r = await client.get("/api/v1/samples/00000000-0000-0000-0000-000000000000")
     assert r.status_code == 404
 
 
 async def test_get_returns_hypermedia_links(client: AsyncClient, payload: dict[str, Any]) -> None:
-    sample_id = (await client.post("/samples", json=payload)).json()["id"]
-    links = (await client.get(f"/samples/{sample_id}")).json()["_links"]
+    sample_id = (await client.post("/api/v1/samples", json=payload)).json()["id"]
+    links = (await client.get(f"/api/v1/samples/{sample_id}")).json()["_links"]
 
-    assert links["self"]["href"].endswith(f"/samples/{sample_id}")
+    assert links["self"]["href"].endswith(f"/api/v1/samples/{sample_id}")
     assert links["delete"]["method"] == "DELETE"
     # a client follows the link instead of building the URL itself
     r = await client.request(links["delete"]["method"], links["delete"]["href"])

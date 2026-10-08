@@ -3,7 +3,10 @@
   fixture (`tests/conftest.py`), overridden into `app.dependency_overrides[get_repository]` (see
   `client` fixture in `test_samples.py`). Nothing is ever committed; the fixture rolls back a
   SAVEPOINT after each test, so tests never share state.
-- Requires `test_db` running (`docker compose up -d test_db`); `TEST_DATABASE_URL` in `.env`.
+- `test_db` is started automatically (the session-scoped `ensure_test_db` fixture in
+  `tests/conftest.py` runs `docker compose up -d test_db --wait`) and stopped automatically
+  after a fully passing run (`pytest_sessionfinish` hook, same file); on a failing run it is
+  left running for inspection. Requires Docker running. `TEST_DATABASE_URL` in `.env`.
 - All tests and fixtures are `async def`; `asyncio_mode = "auto"` and a session-scoped event loop
   (`pyproject.toml`) mean no per-test `@pytest.mark.asyncio` boilerplate is needed.
 - Name `test_<action>_<condition>_<expected>`; `@pytest.mark.parametrize` for input variants.

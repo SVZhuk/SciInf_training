@@ -12,6 +12,9 @@ per test (see `tests/conftest.py`), never committing real rows.
 ## Rules
 - Full type hints, `X | None`, Pydantic v2 API only. No `print`, no broad `except`.
 - Reuse existing patterns; ask before adding abstractions, dependencies or changing API shapes.
+- Frontend JS (`app/frontend/static/js/app.js`) stays a thin REST client against `/api/v1/samples`;
+  no business logic or validation duplicated client-side beyond basic HTML attributes
+  (`required`/`maxlength`) - `schemas.py` is the single source of validation truth.
 - Never weaken or delete a test to make it pass.
 - No double-backtick notation in comments or code. Minimal comments.
 - No em dash (U+2014) or en dash (U+2013) in code, comments, docstrings or docs; `/check` fails on them.

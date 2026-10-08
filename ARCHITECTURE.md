@@ -25,9 +25,12 @@ Python 3.10+ is required, so the code avoids `datetime.UTC`, `enum.StrEnum` and 
 
 ```mermaid
 flowchart LR
-    C[HTTP client] -->|JSON| R["routers/samples.py<br/>thin async controllers"]
+    C[HTTP client] -->|JSON /api/v1| A["api/router.py<br/>version prefix"]
+    A --> R["routers/samples.py<br/>thin async controllers"]
+    B[Browser] -->|HTML /| W["frontend/router.py<br/>homepage view"]
     R -->|validates with| S["schemas.py<br/>Pydantic DTOs"]
     R -->|Depends| D["dependencies.py<br/>DI wiring"]
+    W -->|Depends| D
     D --> P["repository.py<br/>SampleRepository Protocol"]
     P --> SA["SqlAlchemySampleRepository"]
     SA -->|AsyncSession| MD["models.py<br/>SampleModel"]
@@ -40,6 +43,8 @@ Each layer has one job and only talks to its neighbour:
 |---|---|---|
 | `app/schemas.py` | API contract: what clients may send and what they get back | know about storage or HTTP |
 | `app/routers/samples.py` | Map HTTP (paths, status codes, headers) to repository calls | import storage code |
+| `app/api/router.py` | Mount resource routers under the `/api/v1` version prefix | contain route logic itself |
+| `app/frontend/router.py` | Render HTML views over the same repository, for humans not API clients | be imported by `app/api/` or `app/routers/` |
 | `app/dependencies.py` | Build and hand out the repository; shared lookups such as 404 | contain business rules |
 | `app/repository.py` | The only code that reads or writes storage (owns the `Session`) | import FastAPI |
 | `app/models.py` | SQLAlchemy table metadata (shape only, like `schemas.py` for HTTP) | open a `Session` or run a query |
@@ -49,6 +54,27 @@ Each layer has one job and only talks to its neighbour:
 
 Because routers depend on the `SampleRepository` Protocol, not on a concrete class, the
 storage engine is a detail that can change behind the interface.
+
+### API versioning and the frontend layer
+
+`app/api/` and `app/frontend/` are the seam between "the JSON API" and "the HTML frontend", kept
+deliberately thin so either side can change without the other noticing:
+
+- `app/api/router.py` only aggregates resource routers under `/api/v1`. Adding a new resource
+  means adding `router.include_router(new_resource.router)` here, nothing else.
+- `app/frontend/` (router, templates, static files) is the only place that knows HTML exists. It
+  depends on `app/dependencies.py` exactly like `app/routers/samples.py` does, but nothing in
+  the API layer depends on it. If this project later grows a separately-deployed single-page
+  app, `app/frontend/` is deleted wholesale and a `CORSMiddleware` is added in `app/main.py` for
+  the SPA's origin; `app/api/`, `app/routers/`, `app/schemas.py`, `app/repository.py` and
+  `app/dependencies.py` need no changes at all.
+
+The homepage is server-rendered on first load, then progressively enhanced:
+`app/frontend/static/js/app.js` drives a left-hand Add/Edit/Delete sidebar by calling the same
+`/api/v1/samples` endpoints from the browser, then re-renders `#table-container` after each
+mutation. This adds no new backend surface at all - it is the same REST API already consumed by
+`client.py` and HTTPie, now also consumed by browser JS, which is worth pointing out when
+teaching the module.
 
 ### Design patterns in the code
 
@@ -63,7 +89,7 @@ storage engine is a detail that can change behind the interface.
 
 ## 3. Request lifecycle
 
-Example: `POST /samples`.
+Example: `POST /api/v1/samples`.
 
 ```mermaid
 sequenceDiagram
@@ -73,7 +99,7 @@ sequenceDiagram
     participant DI as get_repository
     participant Repo as SqlAlchemySampleRepository
     participant DB as Postgres
-    Client->>FastAPI: POST /samples {name, organism, sequence}
+    Client->>FastAPI: POST /api/v1/samples {name, organism, sequence}
     FastAPI->>FastAPI: parse body into SampleCreate
     alt invalid body
         FastAPI-->>Client: 422 with error details
@@ -89,7 +115,7 @@ sequenceDiagram
     end
     Repo-->>Router: SampleModel (id, created_at set by the DB)
     Router->>Router: SampleRead.model_validate(sample)
-    Router-->>Client: 201 Created, Location: /samples/{id}
+    Router-->>Client: 201 Created, Location: /api/v1/samples/{id}
     Note over DI,DB: get_db_session commits once, after the response body is built
 ```
 
@@ -185,8 +211,8 @@ classDiagram
 | `SampleCreate` | `POST` body | No `id` or `created_at`: the server owns them |
 | `SampleUpdate` | `PATCH` body | Every field optional; `sequence` is deliberately not editable |
 | `SampleRead` | Responses | Adds `id`, `created_at` and computed `length`, `gc_content` |
-| `SampleResource` | `GET /samples/{id}` | Adds hypermedia links, serialized as `_links` |
-| `Page` | `GET /samples` | Envelope with `items`, `total`, `limit`, `offset` |
+| `SampleResource` | `GET /api/v1/samples/{id}` | Adds hypermedia links, serialized as `_links` |
+| `Page` | `GET /api/v1/samples` | Envelope with `items`, `total`, `limit`, `offset` |
 | `SampleModel` | Storage (`app/models.py`) | Declarative model; `id`/`created_at` are server-generated, `name` has a unique constraint |
 
 The `organism` column stores the enum's *value* (e.g. `"homo_sapiens"`), not its member name,
@@ -205,16 +231,17 @@ Example: sending `"sequence": "atgcgc"` stores `ATGCGC` and returns `length: 6`,
 
 | Method | Path | Success | Errors |
 |---|---|---|---|
-| GET | `/samples?organism=&limit=&offset=` | 200 `Page` | 422 |
-| POST | `/samples` | 201 + `Location` header | 409, 422 |
-| GET | `/samples/{id}` | 200 + `_links` | 404, 422 |
-| PATCH | `/samples/{id}` | 200 | 404, 422 |
-| DELETE | `/samples/{id}` | 204, empty body | 404 |
+| GET | `/api/v1/samples?organism=&limit=&offset=` | 200 `Page` | 422 |
+| POST | `/api/v1/samples` | 201 + `Location` header | 409, 422 |
+| GET | `/api/v1/samples/{id}` | 200 + `_links` | 404, 422 |
+| PATCH | `/api/v1/samples/{id}` | 200 | 404, 422 |
+| DELETE | `/api/v1/samples/{id}` | 204, empty body | 404 |
 | GET | `/health` | 200 `{"status": "ok"}` | |
+| GET | `/` | 200, HTML page: samples table + Add/Edit/Delete sidebar (`app/frontend/`) | |
 
 Design decisions:
 
-- **Nouns in paths, verbs in methods.** One resource (`/samples`), one router.
+- **Nouns in paths, verbs in methods.** One resource (`/api/v1/samples`), one router.
 - **Status codes carry meaning.** 201 plus `Location` tells the client where the new resource
   lives; 204 means success with nothing to return; 409 means the request conflicts with
   current state (duplicate name); 422 means the input is malformed.
@@ -222,7 +249,7 @@ Design decisions:
   is 0 or more. `total` lets clients compute the number of pages.
 - **PATCH is a partial update.** The repository applies only fields the client actually sent
   (`model_dump(exclude_unset=True)`), so omitted fields are left untouched.
-- **Richardson Maturity Level 3 (HATEOAS).** `GET /samples/{id}` returns `_links` with
+- **Richardson Maturity Level 3 (HATEOAS).** `GET /api/v1/samples/{id}` returns `_links` with
   `self`, `update`, `delete` and `collection`. Clients follow links instead of building URLs.
   URLs are generated with `request.url_for`, so they stay correct if prefixes change.
 
@@ -285,7 +312,7 @@ sharing, no real locking. The default `get_repository()` now returns `SqlAlchemy
 
 Exercises:
 
-1. Add `GET /samples/{id}/reverse-complement`.
+1. Add `GET /api/v1/samples/{id}/reverse-complement`.
 2. Add an `X-API-Key` header dependency that returns 401 when missing.
 3. Add a second Alembic revision (e.g. an index, or a new column) and confirm `alembic upgrade
    head` / `alembic downgrade -1` both work cleanly.
