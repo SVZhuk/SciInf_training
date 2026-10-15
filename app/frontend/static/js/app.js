@@ -21,13 +21,15 @@
   let selectedId = null;
   let formMode = "add";
 
+  alignSidebar();
+
   function pad(value) {
     return String(value).padStart(2, "0");
   }
 
   function formatCreatedAt(iso) {
     const d = new Date(iso);
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
   }
 
   function escapeHtml(value) {

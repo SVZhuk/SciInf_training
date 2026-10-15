@@ -12,6 +12,10 @@ uv tool install httpie                 # terminal 2: once, puts `http` on PATH
 http --version                         # 3.2.4 or newer
 ```
 
+Any way of starting the API works here, since HTTPie just talks to whatever is listening on
+`:8000`: `docker compose --profile prod up --build` (see [README.md](../README.md)) works just
+as well as `uv run uvicorn ...`.
+
 No install? Prefix every command with `uvx --from httpie`, e.g. `uvx --from httpie http :8000/health`.
 HTTPie is a tool, not a project dependency, so it is not in `pyproject.toml`.
 
@@ -195,7 +199,7 @@ Get-Content -Raw sample.json | http POST :8000/api/v1/samples
 ```
 
 **Sessions** remember headers and cookies between calls. Useful once the API needs a key
-(README exercise 3):
+(README exercise 2):
 
 ```bash
 http --session=demo :8000/api/v1/samples X-API-Key:secret   # stored

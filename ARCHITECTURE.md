@@ -18,6 +18,7 @@ A small, production-style REST service used to teach API design. It stores DNA s
 | Tests | pytest, pytest-asyncio | In-process async tests, no running server needed |
 | Quality | ruff, mypy (strict + pydantic plugin) | Lint, format, static types |
 | Packaging | uv (`pyproject.toml`, `uv.lock`) | Reproducible environment, one command setup |
+| Containerization | Docker (multi-stage, non-root runtime) | Reproducible image; also the base for the Apptainer/HPC build and the EC2 deploy |
 
 Python 3.10+ is required, so the code avoids `datetime.UTC`, `enum.StrEnum` and `typing.Self`.
 
@@ -319,13 +320,5 @@ Exercises:
 
 ## 10. Run it
 
-```bash
-cp .env.example .env                  # DATABASE_URL / TEST_DATABASE_URL
-docker compose up -d db test_db       # dev + test Postgres
-uv sync                               # create .venv and install everything
-uv run alembic upgrade head           # create the schema
-uv run uvicorn app.main:app --reload  # http://127.0.0.1:8000/docs
-uv run python client.py               # in a second terminal
-uv run pytest                         # tests, run against test_db (Postgres)
-uv run python scripts/check.py        # tests + lint + types
-```
+Setup and run instructions (Docker-only or local-with-uv) live in [README.md](README.md); this
+document covers architecture only.

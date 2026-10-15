@@ -5,3 +5,8 @@ __pycache__/
 .pytest_cache/
 .claude/logs/
 .env
+infra/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+infra/tfplan

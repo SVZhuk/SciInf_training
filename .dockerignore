@@ -1,0 +1,23 @@
+# Keep secrets, local environments and dev tooling out of the image.
+.env
+.venv
+.git
+.github
+.claude
+.vscode
+**/__pycache__
+.pytest_cache
+.mypy_cache
+.ruff_cache
+tests
+docs
+*.md
+scratchpad.py
+# Local-only files of the demo (not needed at runtime)
+docker-compose.yml
+scripts
+client.py
+fetch_uniprot.py
+# Deployment code (not needed inside the image)
+deploy
+infra
